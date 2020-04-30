@@ -3,6 +3,7 @@ import requests
 import sqlite3
 import json
 from bs4 import BeautifulSoup
+from flask import Flask, render_template, request
 
 #SETTING UP PART
 api_key = secrets.api_key
@@ -326,109 +327,148 @@ def load_yelp():
 #load_sites()
 #load_yelp()
 
-def process_command(command, site_name):
+#FLASK PART
+app = Flask(__name__)
+
+def get_res_results(sort_by, sort_order, chosen_site):
     '''TODO
     '''
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect('site_restaurant.sqlite')
     cur = conn.cursor()
 
-    data_type_list = ['byreviewcount', 'bycategory', 'byrating', 'byprice', 'byaddress']
-    command = str(command).lower()
-    
-    input_valid = True
-    if command in data_type_list:
-        input_valid = True
+    if sort_by == "review":
+        sort_column = "r.ReviewCount"
+    elif sort_by == "category":
+        sort_column = "r.Category"
+    elif sort_by == "rating":
+        sort_column = "r.Rating"
     else:
-        input_valid = False
-        return None
+        sort_column = "r.Price"
 
-    if input_valid == True:
-        # if command == 'everything':
-        #     statement = "SELECT * "
-        if command == 'byreviewcount':
-            statement = "SELECT r.RestaurantName, r.ReviewCount "
-        elif command == 'bycategory':
-            statement = "SELECT r.RestaurantName, r.Category "
-        elif command == 'byrating':
-            statement = "SELECT r.RestaurantName, r.Rating "
-        elif command == 'byprice':
-            statement = "SELECT r.RestaurantName, r.Price "
-        elif command == 'byaddress':
-            statement = "SELECT r.RestaurantName, r.Address1, r.Address2, r.Address3, r.City, r.ZipCode, r.State "
-        else:
-            return None
-        statement += "FROM Restaurants r JOIN Sites s ON r.SiteId = s.SiteId WHERE s.SiteName=?"
+    chosen_site = [str(chosen_site)]
 
-    site_name = [str(site_name)]
-    table_return_list = cur.execute(statement, site_name)
+    statement = f'''
+        SELECT r.RestaurantName, {sort_column} 
+        FROM Restaurants r 
+        JOIN Sites s 
+        ON r.SiteId = s.SiteId 
+        WHERE s.SiteName=? 
+        ORDER BY {sort_column} {sort_order}
+    '''
+    print(statement)
+    results = cur.execute(statement, chosen_site).fetchall()
     conn.commit()
-    for row in table_return_list:
+    for row in results:
         print(row)
     conn.close()
-    return table_return_list
-    
+    return results
+
+flask_params = {'state': 'california', 'site': 'Yosemite National Park'}
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/sites', methods=['POST'])
+def sites():
+    chosen_state = request.form['state']
+    flask_params['state'] = chosen_state
+    sites_for_choose = state_sites_dict[chosen_state]
+    return render_template('sites.html', chosen_state=chosen_state, sites=sites_for_choose)
+
+@app.route('/sort', methods=['POST'])
+def sort():
+    get_index = request.form['site_index']
+    chosen_state = flask_params['state']
+    site_valid = True
+    try:
+        get_index = int(get_index)
+        if get_index not in range(len(state_sites_dict[chosen_state])+1):
+            site_valid = False
+    except:
+        site_valid = False
+    if get_index in range(len(state_sites_dict[chosen_state])+1):
+        get_indice = int(get_index) - 1
+        chosen_site = state_sites_dict[chosen_state][get_indice]['site_name']
+        flask_params['site'] = chosen_site
+        site_valid = True
+    return render_template('sort.html', chosen_site=chosen_site, site_valid=site_valid)
+
+@app.route('/results', methods=['POST'])
+def show_res():
+    sort_by = request.form['sort']
+    sort_order = request.form['dir']
+    chosen_site = flask_params['site']
+    results = get_res_results(sort_by, sort_order, chosen_site)
+    return render_template('result.html', 
+        sort=sort_by, results=results, chosen_site=chosen_site)
 
 if __name__ == "__main__":
-    get_state = input("Please select a state from the four most popular tourism states\n(california, florida, nevada, texas)\nor \"exit\"\n: ")
-    get_state = str(get_state).lower()
-    while get_state != 'exit':
-        if get_state not in states:
-            print('[Error] Please choose a state from the four most popular tourism states')
-            get_state = input("Please select a state from the four most popular tourism states\n(california, florida, nevada, texas, new york)\nor \"exit\"\n: ")
-        else:
-            print('-------------------------------------------')
-            print(f'List of Top Attractions in {get_state}')
-            print('-------------------------------------------')
-            start_num = 1
-            for site in state_sites_dict[get_state]:
-                print(f"[{start_num}] {site['site_name']}, {site['region_zip']}")
-                start_num += 1
+    app.run(debug=True)
+    # get_state = input("Please select a state from the four most popular tourism states\n(california, florida, nevada, texas)\nor \"exit\"\n: ")
+    # get_state = str(get_state).lower()
+    # while get_state != 'exit':
+    #     if get_state not in states:
+    #         print('[Error] Please choose a state from the four most popular tourism states')
+    #         get_state = input("Please select a state from the four most popular tourism states\n(california, florida, nevada, texas, new york)\nor \"exit\"\n: ")
+    #     else:
+    #         print('-------------------------------------------')
+    #         print(f'List of Top Attractions in {get_state}')
+    #         print('-------------------------------------------')
+    #         start_num = 1
+    #         for site in state_sites_dict[get_state]:
+    #             print(f"[{start_num}] {site['site_name']}, {site['region_zip']}")
+    #             start_num += 1
 
-            #for users to look deep into specific attraction site and search for restaurants nearby
-            get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
-            get_num = get_num.lower()
-            while get_num != 'exit':
-                try:
-                    get_num = int(get_num)
-                    if (get_num not in range(len(state_sites_dict[get_state])+1)):
-                        print('[Error] Invalid Input')
-                        print('-------------------------------------------')
-                        get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
-                except:
-                    print('[Error] Invalid Input')
-                    print('-------------------------------------------')
-                    get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
-                if (get_num in range(len(state_sites_dict[get_state])+1)):
-                    get_indice = int(get_num) - 1
-                    get_site_name = state_sites_dict[get_state][get_indice]['site_name']
+    #         #for users to look deep into specific attraction site and search for restaurants nearby
+    #         get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
+    #         get_num = get_num.lower()
+    #         while get_num != 'exit':
+    #             try:
+    #                 get_num = int(get_num)
+    #                 if (get_num not in range(len(state_sites_dict[get_state])+1)):
+    #                     print('[Error] Invalid Input')
+    #                     print('-------------------------------------------')
+    #                     get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
+    #             except:
+    #                 print('[Error] Invalid Input')
+    #                 print('-------------------------------------------')
+    #                 get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
+    #             if (get_num in range(len(state_sites_dict[get_state])+1)):
+    #                 get_indice = int(get_num) - 1
+    #                 chosen_site = state_sites_dict[get_state][get_indice]['site_name']
 
-                    print(f"Great! You have chosen \"{get_site_name}\" as your destination.")
-                    print("Now please choose how the data would be presented.")
-                    print("Choose from (byReviewCount, byCategory, byRating, byPrice, byAddress)")
-                    get_command = input("Type in your request (example: byReviewCount) or \"exit\" or \"back\"\n: ")
-                    get_command = str(get_command).lower()
-                    while get_command != 'exit':
-                        if get_command != 'back':
-                            command_result = process_command(get_command, get_site_name)
-                            if command_result == None:
-                                print("Sorry, no data found for your search.")
-                                get_command = input("Type in your request (example: byReviewCount) or \"exit\" or \"back\"\n: ")
-                            else:
-                                process_command(get_command, get_site_name)
-                                get_command = input("Type in your request (example: byReviewCount) or \"exit\" or \"back\"\n: ")
-                        else:
-                            get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
-                            break
-                    else:
-                        exit()
+    #                 # print(f"Great! You have chosen \"{get_site_name}\" as your destination.")
+    #                 # print("Now please choose how the data would be presented.")
+    #                 # print("Choose from (byReviewCount, byCategory, byRating, byPrice, byAddress)")
+    #                 # get_command = input("Type in your request (example: byReviewCount) or \"exit\" or \"back\"\n: ")
+    #                 # get_command = str(get_command).lower()
+    #                 # while get_command != 'exit':
+    #                 #     if get_command != 'back':
+    #                 #         command_result = process_command(get_command, get_site_name)
+    #                 #         if command_result == None:
+    #                 #             print("Sorry, no data found for your search.")
+    #                 #             get_command = input("Type in your request (example: byReviewCount) or \"exit\" or \"back\"\n: ")
+    #                 #         else:
+    #                 #             process_command(get_command, get_site_name)
+    #                 #             get_command = input("Type in your request (example: byReviewCount) or \"exit\" or \"back\"\n: ")
+    #                 #     else:
+    #                 #         get_num = input('Choose a number to search for nearby restaurants or \"exit\" or \"back\"\n: ')
+    #                 #         break
+    #                 # else:
+    #                 #     exit()
+    #                 print("Success! Please type in the url that command line gave you to get to the results page.")
+    #                 print("(This step is for you to more easily see the results, thank you for using Tianyue's program :))")
+    #                 app.main()
 
-                if get_num == 'back':
-                    get_state = input("Please select a state from the four most popular tourism states\n(california, florida, nevada, texas)\nor \"exit\"\n: ")
-                    break
-            else:
-                exit()
-    else:
-        exit()               
+    #             if get_num == 'back':
+    #                 get_state = input("Please select a state from the four most popular tourism states\n(california, florida, nevada, texas)\nor \"exit\"\n: ")
+    #                 break
+    #         else:
+    #             exit()
+
+    # else:
+    #     exit()               
 
 
                     

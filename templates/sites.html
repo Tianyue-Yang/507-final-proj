@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF8"/>
+    <title>Sites for state</title>
+    <style>
+        body{
+                margin-left: 50px;
+        }
+</style>
+</head>
+<body>
+    <h1>Here are the top attractions for {{chosen_state}}, please type the index number for the attraction site you are going to.</h1>
+
+    <table>
+        <tr>
+            <th>Index</th>
+            <th>Attraction</th>
+        </tr>
+        {% set index = namespace(value=1) %}
+        {% for site in sites %}
+        <tr>
+            <td>{{index.value}}</td>
+            <td>{{site['site_name']}}, {{site['region_zip']}}</td>
+        </tr>
+        {% set index.value = index.value + 1 %}
+        {% endfor %}
+
+    </table>
+
+    <form action='/sort' method='POST'>
+        <p> <br/></p>
+        <label for="site_index">Type in a index number: </label><br>
+        <input type="number" name="site_index"><br>
+
+        <input type='submit' value='Get Restaurants'/>
+    </form>
+
+</body>
+</html>

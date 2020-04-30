@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF8"/>
+    <title>Restaurants results for site</title>
+    <style>
+        body{
+                margin-left: 50px;
+        }
+</style>
+</head>
+<body>
+    <h1>Here are nearby restaurants for {{chosen_site}}</h1>
+
+    <table>
+        <tr>
+            <th>Restaurant Name</th>
+            <th>{{sort}}</th>
+        </tr>
+        {% for row in results %}
+        <tr>
+            <td>{{row[0]}}</td>
+            <td>{{row[1]}}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+
+
+ 
+</body>
+</html>

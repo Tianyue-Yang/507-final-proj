@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF8"/>
+    <title>Sites home</title>
+    <style>
+            body{
+                    margin-left: 50px;
+            }
+</style>
+</head>
+<body>
+    <h1>Please select a state from the four most popular tourism states below!</h1>
+
+    <form action='/sites' method='POST'>
+    <p>
+    Most popular tourism states: <br/>
+        <input type='radio' name='state' 
+                value='california' checked='checked'/> California <br/>
+        <input type='radio' name='state' 
+                value='florida'/> Florida <br/>
+        <input type='radio' name='state' 
+                value='nevada'/> Nevada <br/>
+        <input type='radio' name='state' 
+                value='texas'/> Texas <br/>
+    </p>
+        
+    <input type='submit' value='Get Sites'/>
+
+    </form>
+
+</body>
+</html>

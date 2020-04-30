@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF8"/>
+    <title>Site restaurants home</title>
+    <style>
+        body{
+                margin-left: 50px;
+        }
+</style>
+</head>
+<body>
+    {% if site_valid == False %}
+        <h1>Sorry, not a valid index search for attraction sites :(</h1>
+    {% else %}
+        <h1>Great! You've choose {{chosen_site}} as your destination, please choose the results you want to look at its nearby restaurants.</h1>
+
+        <form action='/results' method='POST'>
+        <p>
+        Sort by: <br/>
+            <input type='radio' name='sort' 
+                    value='review' checked='checked'/> Review Counts <br/>
+            <input type='radio' name='sort' 
+                    value='category'/> Category <br/>
+            <input type='radio' name='sort' 
+                    value='rating'/> Rating <br/>
+            <input type='radio' name='sort' 
+                    value='price'/> Price <br/>
+        </p>
+
+        <p>
+        Sort direction: <br/>
+            <input type='radio' name='dir'
+                value='desc' checked='checked'/>High to Low<br/>
+            <input type='radio' name='dir'
+                value='asc'/>Low to High<br/>
+        </p>
+            
+
+        <input type='submit' value='Get Restaurants'/>
+
+        </form>
+    {% endif %}
+
+</body>
+</html>
